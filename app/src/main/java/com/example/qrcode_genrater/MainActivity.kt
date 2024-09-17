@@ -37,7 +37,12 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Share
@@ -130,11 +135,72 @@ fun GalleryQrCodeApp(navController: NavController) {
                 .requiredWidth(300.dp)
                 .fillMaxHeight()
         ) {
-            Text("Drawer title", modifier = Modifier.padding(16.dp))
+            Text(
+                "Scanner",
+                modifier = Modifier.padding(16.dp),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 20.sp
+            )
             Divider()
-            NavigationDrawerItem(label = { Text(text = "Drawer Item") },
+            NavigationDrawerItem(label = {
+                Text(
+                    text = "Scan",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            },
                 selected = false,
-                onClick = { /*TODO*/ })
+                onClick = {
+                    navController.navigate(Screens.Scan.route)
+                }, icon = {
+                    Icon(imageVector = Icons.Default.DocumentScanner, contentDescription = "")
+                }
+            )
+            Divider()
+            NavigationDrawerItem(label = {
+                Text(
+                    text = "Create Qr",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+                selected = false,
+                onClick = {
+                    navController.navigate(Screens.Create_Qr.route)
+                }, icon = {
+                    Icon(imageVector = Icons.Default.QrCode, contentDescription = "")
+                }
+            )
+
+            Divider()
+            NavigationDrawerItem(label = {
+                Text(
+                    text = "Privacy Policy",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+                selected = false,
+                onClick = {
+                    navController.navigate(Screens.Privacy_Policy.route)
+                }, icon = {
+                    Icon(imageVector = Icons.Default.PrivacyTip, contentDescription = "")
+                }
+            )
+
+            Divider()
+            NavigationDrawerItem(label = {
+                Text(
+                    text = "Setting",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+                selected = false,
+                onClick = { /*TODO*/ }, icon = {
+                    Icon(imageVector = Icons.Default.Settings, contentDescription = "")
+                }
+            )
         }
     }
 

@@ -1,6 +1,7 @@
 package com.example.qrcode_genrater
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -59,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -112,9 +114,8 @@ fun SelectImageFromGallery(onImageSelected: (Uri) -> Unit) {
 fun GalleryQrCodeApp() {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    val scroll = rememberScrollState()
     val context = LocalContext.current
-    val density = LocalDensity.current
+
     Scaffold(topBar = {
         TopAppBar(title = {
             Text(
@@ -138,7 +139,6 @@ fun GalleryQrCodeApp() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .verticalScroll(scroll)
                 .padding(top = it.calculateTopPadding()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -148,76 +148,51 @@ fun GalleryQrCodeApp() {
                     selectedImageUri = uri
                 }
             } else {
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 12.dp, end = 12.dp)
-                        .height(54.dp)
-                        .background(Color.LightGray.copy(0.20f)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Icon(imageVector = Icons.Default.Person, contentDescription = "")
-                    Spacer(modifier = Modifier.width(9.dp))
-
-                    Text(text = "My QR", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-
-                    Spacer(modifier = Modifier.weight(1f))
-                    Icon(imageVector = Icons.Default.BlurLinear, contentDescription = "")
-                    Spacer(modifier = Modifier.width(9.dp))
-                    Icon(imageVector = Icons.Outlined.Star, contentDescription = "")
-
-                }
-
                 Spacer(modifier = Modifier.height(97.dp))
 
-                val qrCodeModifier = Modifier
-                    .size(300.dp)
-                    .background(Color.White, shape = RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-                    .onGloballyPositioned { layoutCoordinates ->
-                        qrCodeBitmap = generateQrCodeBitmap(layoutCoordinates.size, selectedImageUri.toString(), density)
-                    }
+                qrCodeBitmap = generateQRCode(selectedImageUri.toString())
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                QrCodeView(
-                    data = selectedImageUri.toString(),
-                    modifier = Modifier
-                        .size(300.dp)
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                )
-                Spacer(modifier = Modifier.height(40.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 10.dp, end = 10.dp)
-                        .height(55.dp)
-                        .background(Color.LightGray.copy(alpha = 0.20f)),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Save,
-                        contentDescription = "",
-                        modifier = Modifier.size(40.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(22.dp))
-
-                    Icon(
-                        imageVector = Icons.Outlined.Share,
-                        contentDescription = "",
+                qrCodeBitmap?.let { bitmap ->
+                    QrCodeView(
+                        data = selectedImageUri.toString(),
                         modifier = Modifier
-                            .size(40.dp)
-                            .clickable {
-                                qrCodeBitmap?.let { it1 -> shareQrCode(context, it1) }
-                            }
+                            .size(300.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            .padding(8.dp)
                     )
-                }
+                    Spacer(modifier = Modifier.height(40.dp))
 
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 10.dp, end = 10.dp)
+                            .height(55.dp)
+                            .background(Color.LightGray.copy(alpha = 0.20f)),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Save,
+                            contentDescription = "",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable {
+                                    saveQRCodeToGallery(context, bitmap)
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(22.dp))
+
+                        Icon(
+                            imageVector = Icons.Outlined.Share,
+                            contentDescription = "",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable {
+                                    shareQRCode(context, bitmap)
+                                }
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(22.dp))
 
@@ -248,7 +223,6 @@ fun GalleryQrCodeApp() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-
                 Button(
                     onClick = { selectedImageUri = null },
                     colors = ButtonDefaults.buttonColors(
@@ -269,61 +243,60 @@ fun GalleryQrCodeApp() {
     }
 }
 
-fun generateQrCodeBitmap(size: IntSize, data: String, density: Density): Bitmap {
-    return Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
-}
 
-fun saveQrCodeToGallery(context: Context, bitmap: Bitmap) {
-    val contentResolver = context.contentResolver
-    val contentValues = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "qr_code_${System.currentTimeMillis()}.png")
-        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/QrCodes")
-    }
-    val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-    uri?.let {
-        val outputStream: OutputStream? = contentResolver.openOutputStream(it)
-        outputStream.use { stream ->
-            if (stream != null) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-            }
-            Toast.makeText(context, "QR Code saved", Toast.LENGTH_SHORT).show()
-        }
-    }
-}
-
-fun shareQrCode(context: Context, bitmap: Bitmap) {
-    val cachePath = File(context.cacheDir, "images")
-    cachePath.mkdirs()
-    val file = File(cachePath, "qr_code.png")
-    val fileOutputStream = FileOutputStream(file)
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
-    fileOutputStream.close()
-
-    val fileUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "image/png"
-        putExtra(Intent.EXTRA_STREAM, fileUri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-
-    context.startActivity(Intent.createChooser(intent, "Share QR Code"))
-}
-
-/*
-fun generateQrCodeBitmap(size: IntSize, data: String): Bitmap {
-    val writer = QRCodeWriter()
+fun generateQRCode(text: String): Bitmap? {
+    val qrCodeWriter = QRCodeWriter()
     return try {
-        val bitMatrix = writer.encode(data, BarcodeFormat.QR_CODE, size.width, size.height)
-        val bitmap = Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
-        for (x in 0 until size.width) {
-            for (y in 0 until size.height) {
-                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.Black else Color.White)
+        val bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 300, 300)
+        val bitmap = Bitmap.createBitmap(300, 300, Bitmap.Config.RGB_565)
+        for (x in 0 until 300) {
+            for (y in 0 until 300) {
+                bitmap.setPixel(
+                    x,
+                    y,
+                    if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
+                )
             }
         }
         bitmap
     } catch (e: WriterException) {
-        Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
+        e.printStackTrace()
+        null
     }
-}*/
+}
+
+fun saveQRCodeToGallery(context: Context, bitmap: Bitmap) {
+    val contentResolver: ContentResolver = context.contentResolver
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "qrcode_${System.currentTimeMillis()}.png")
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+    }
+
+    val uri: Uri? =
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    uri?.let {
+        val outputStream: OutputStream? = contentResolver.openOutputStream(it)
+        outputStream?.use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            Toast.makeText(context, "QR Code saved to Gallery", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+fun shareQRCode(context: Context, bitmap: Bitmap) {
+    val cachePath = File(context.externalCacheDir, "shared_qr_code.png")
+    val fileOutputStream = FileOutputStream(cachePath)
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
+    fileOutputStream.close()
+
+    val uri: Uri =
+        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", cachePath)
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_STREAM, uri)
+        type = "image/png"
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Share QR Code"))
+}

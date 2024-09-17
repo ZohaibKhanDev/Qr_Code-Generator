@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -12,6 +14,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +35,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +54,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
@@ -58,20 +65,30 @@ fun ScanScreen(navController: NavController) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var scannedText1 = "Scan a QR Code"
+    var scannedText1 by remember { mutableStateOf("Scan a QR Code") }
+    var permissionGranted by remember { mutableStateOf(
+        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    ) }
 
 
-    val cameraPermission = Manifest.permission.CAMERA
-    val permissionGranted = ContextCompat.checkSelfPermission(context, cameraPermission) == PackageManager.PERMISSION_GRANTED
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            permissionGranted = isGranted
+            if (isGranted) {
+                Log.d("ScanScreen", "Camera permission granted")
+            } else {
+                Log.d("ScanScreen", "Camera permission denied")
+            }
+        }
+    )
 
-    if (!permissionGranted) {
-        ActivityCompat.requestPermissions(
-            context as Activity,
-            arrayOf(cameraPermission),
-            100
-        )
+
+    LaunchedEffect(Unit) {
+        if (!permissionGranted) {
+            launcher.launch(Manifest.permission.CAMERA)
+        }
     }
-
 
     ModalNavigationDrawer(drawerState = drawerState, drawerContent = {
         ModalDrawerSheet(
@@ -169,11 +186,10 @@ fun ScanScreen(navController: NavController) {
 
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (permissionGranted){
+            if (permissionGranted) {
                 CameraPreview(onQrCodeScanned = { qrCode ->
                     scannedText1 = qrCode ?: "No QR Code detected"
                 })
-
 
                 Text(
                     text = scannedText1,
@@ -181,11 +197,16 @@ fun ScanScreen(navController: NavController) {
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(8.dp),
+                    color = Color.White
                 )
             } else {
-                Text("Camera permission is required to use this feature.")
+                Text(
+                    "Camera permission is required to use this feature.",
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
-
         }
 
     }
@@ -200,31 +221,38 @@ fun CameraPreview(onQrCodeScanned: (String?) -> Unit) {
     AndroidView(
         factory = { ctx ->
             val previewView = PreviewView(ctx)
-
             val cameraExecutor = Executors.newSingleThreadExecutor()
             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
             cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-
-                val preview = Preview.Builder()
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-                val barcodeScanner = BarcodeScanning.getClient()
-                val imageAnalyzer = ImageAnalysis.Builder()
-                    .build()
-                    .also { analysisUseCase ->
-                        analysisUseCase.setAnalyzer(cameraExecutor, { imageProxy ->
-                            processImageProxy(barcodeScanner, imageProxy, onQrCodeScanned)
-                        })
-                    }
-
                 try {
+                    val cameraProvider = cameraProviderFuture.get()
+
+
+                    val preview = Preview.Builder()
+                        .build()
+                        .also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+
+
+                    val options = BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                        .build()
+                    val barcodeScanner = BarcodeScanning.getClient(options)
+
+
+                    val imageAnalyzer = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { analysisUseCase ->
+                            analysisUseCase.setAnalyzer(cameraExecutor, { imageProxy ->
+                                processImageProxy(barcodeScanner, imageProxy, onQrCodeScanned)
+                            })
+                        }
+
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
@@ -243,25 +271,36 @@ fun CameraPreview(onQrCodeScanned: (String?) -> Unit) {
     )
 }
 
+
 @OptIn(ExperimentalGetImage::class)
 private fun processImageProxy(
     barcodeScanner: BarcodeScanner,
     imageProxy: ImageProxy,
     onQrCodeScanned: (String?) -> Unit
 ) {
-    val mediaImage = imageProxy.image ?: return
+    val mediaImage = imageProxy.image ?: run {
+        Log.w("CameraPreview", "No image available")
+        imageProxy.close()
+        return
+    }
     val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
     barcodeScanner.process(inputImage)
         .addOnSuccessListener { barcodes ->
-            for (barcode in barcodes) {
-                barcode.rawValue?.let { qrCode ->
-                    onQrCodeScanned(qrCode)
+            if (barcodes.isNotEmpty()) {
+                Log.d("CameraPreview", "Barcodes detected: ${barcodes.size}")
+                barcodes.forEach { barcode ->
+                    barcode.rawValue?.let { qrCode ->
+                        Log.d("CameraPreview", "QR Code detected: $qrCode")
+                        onQrCodeScanned(qrCode)
+                    }
                 }
+            } else {
+                Log.d("CameraPreview", "No barcodes detected")
             }
         }
-        .addOnFailureListener {
-            Log.e("CameraPreview", "Barcode scanning failed", it)
+        .addOnFailureListener { e ->
+            Log.e("CameraPreview", "Barcode scanning failed", e)
         }
         .addOnCompleteListener {
             imageProxy.close()

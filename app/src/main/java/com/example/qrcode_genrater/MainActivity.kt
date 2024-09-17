@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.QrCode
@@ -141,6 +142,23 @@ fun GalleryQrCodeApp(navController: NavController) {
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 20.sp
             )
+
+            Divider()
+            NavigationDrawerItem(label = {
+                Text(
+                    text = "Create Image Qr",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            },
+                selected = false,
+                onClick = {
+                    navController.navigate(Screens.Home.route)
+                }, icon = {
+                    Icon(imageVector = Icons.Default.ImageSearch, contentDescription = "")
+                }
+            )
+
             Divider()
             NavigationDrawerItem(label = {
                 Text(

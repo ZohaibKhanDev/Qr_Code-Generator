@@ -1,7 +1,7 @@
 package com.example.qrcode_genrater
 
 import android.Manifest
-import android.app.Activity
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,16 +23,23 @@ import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.ImageSearch
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +56,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
@@ -58,17 +64,25 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun ScanScreen(navController: NavController) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var scannedText1 by remember { mutableStateOf("Scan a QR Code") }
-    var permissionGranted by remember { mutableStateOf(
-        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-    ) }
+    var permissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
 
     val launcher = rememberLauncherForActivityResult(
@@ -183,31 +197,60 @@ fun ScanScreen(navController: NavController) {
     }
 
     ) {
-
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (permissionGranted) {
-                CameraPreview(onQrCodeScanned = { qrCode ->
-                    scannedText1 = qrCode ?: "No QR Code detected"
-                })
-
+        Scaffold(topBar = {
+            TopAppBar(title = {
                 Text(
-                    text = scannedText1,
-                    fontSize = 18.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(8.dp),
-                    color = Color.White
+                    text = "Create",
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
-            } else {
-                Text(
-                    "Camera permission is required to use this feature.",
-                    modifier = Modifier.align(Alignment.Center)
+            }, navigationIcon = {
+                IconButton(onClick = {
+                    scope.launch { drawerState.open() }
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color.Black
+                    )
+                }
+            }, actions = {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = "",
+                    tint = Color.Black
                 )
+            }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        }) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(top = it.calculateTopPadding())) {
+                if (permissionGranted) {
+                    CameraPreview(onQrCodeScanned = { qrCode ->
+                        scannedText1 = qrCode ?: "No QR Code detected"
+                    })
+
+                    Text(
+                        text = scannedText1,
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp)
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .padding(8.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        "Camera permission is required to use this feature.",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
+
 
     }
 }

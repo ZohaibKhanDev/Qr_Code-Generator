@@ -21,9 +21,9 @@ fun Navigation() {
         }
 
         composable(Screens.Create_Qr.route) {
-            Create_Qr(navController)
+            CreateQr(navController)
         }
-        composable(Screens.Privacy_Policy.route){
+        composable(Screens.Privacy_Policy.route) {
             Privacy_policy(navController)
         }
 

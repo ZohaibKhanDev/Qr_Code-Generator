@@ -200,7 +200,7 @@ fun ScanScreen(navController: NavController) {
         Scaffold(topBar = {
             TopAppBar(title = {
                 Text(
-                    text = "Create",
+                    text = "Scan",
                     color = Color.Black,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold

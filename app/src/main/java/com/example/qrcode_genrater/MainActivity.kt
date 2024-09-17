@@ -71,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.navigation.NavController
 import com.example.qrcode_genrater.ui.theme.QrCodeGenraterTheme
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.WriterException
@@ -87,7 +88,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             QrCodeGenraterTheme {
-                GalleryQrCodeApp()
+                Navigation()
             }
         }
     }
@@ -101,7 +102,7 @@ fun SelectImageFromGallery(onImageSelected: (Uri) -> Unit) {
 
     Button(
         onClick = { launcher.launch("image/*") }, colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF6200EE), contentColor = Color.White
+            containerColor = Color.White, contentColor = Color.Black
         ), shape = RoundedCornerShape(1.dp), modifier = Modifier.fillMaxSize()
     ) {
         Icon(imageVector = Icons.Default.Add, contentDescription = "Select Image")
@@ -114,7 +115,7 @@ fun SelectImageFromGallery(onImageSelected: (Uri) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun GalleryQrCodeApp() {
+fun GalleryQrCodeApp(navController: NavController) {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
@@ -123,52 +124,46 @@ fun GalleryQrCodeApp() {
     val scope = rememberCoroutineScope()
 
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(modifier = Modifier
+    ModalNavigationDrawer(drawerState = drawerState, drawerContent = {
+        ModalDrawerSheet(
+            modifier = Modifier
                 .requiredWidth(300.dp)
-                .fillMaxHeight()) {
-                Text("Drawer title", modifier = Modifier.padding(16.dp))
-                Divider()
-                NavigationDrawerItem(
-                    label = { Text(text = "Drawer Item") },
-                    selected = false,
-                    onClick = { /*TODO*/ }
-                )
-            }
+                .fillMaxHeight()
+        ) {
+            Text("Drawer title", modifier = Modifier.padding(16.dp))
+            Divider()
+            NavigationDrawerItem(label = { Text(text = "Drawer Item") },
+                selected = false,
+                onClick = { /*TODO*/ })
         }
+    }
 
     ) {
         Scaffold(topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Create",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        scope.launch { drawerState.open() }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menu",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
+            TopAppBar(title = {
+                Text(
+                    text = "Create",
+                    color = Color.Black,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }, navigationIcon = {
+                IconButton(onClick = {
+                    scope.launch { drawerState.open() }
+                }) {
                     Icon(
-                        imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = "",
-                        tint = Color.White
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = Color.Black
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Blue)
+                }
+            }, actions = {
+                Icon(
+                    imageVector = Icons.Outlined.MoreVert,
+                    contentDescription = "",
+                    tint = Color.Black
+                )
+            }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }) {
             Column(
@@ -207,26 +202,22 @@ fun GalleryQrCodeApp() {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Start
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Save,
+                            Icon(imageVector = Icons.Outlined.Save,
                                 contentDescription = "",
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clickable {
                                         saveQRCodeToGallery(context, bitmap)
-                                    }
-                            )
+                                    })
                             Spacer(modifier = Modifier.width(22.dp))
 
-                            Icon(
-                                imageVector = Icons.Outlined.Share,
+                            Icon(imageVector = Icons.Outlined.Share,
                                 contentDescription = "",
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clickable {
                                         shareQRCode(context, bitmap)
-                                    }
-                            )
+                                    })
                         }
                     }
 
@@ -289,9 +280,7 @@ fun generateQRCode(text: String): Bitmap? {
         for (x in 0 until 300) {
             for (y in 0 until 300) {
                 bitmap.setPixel(
-                    x,
-                    y,
-                    if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
+                    x, y, if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
                 )
             }
         }
